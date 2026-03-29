@@ -3,11 +3,11 @@ import matplotlib.pyplot as plt
 import os
 import glob
 import datetime
+import numpy as np
 
 RESULTS_DIR = 'results'
 
 def generate_report():
-    # Find latest results file
     list_of_files = glob.glob(os.path.join(RESULTS_DIR, 'simulation_results_*.json'))
     if not list_of_files:
         print("No results file found. Run fl_simulation.py first.")
@@ -19,85 +19,111 @@ def generate_report():
     print(f"Generating report for: {latest_file}")
 
     with open(latest_file, 'r') as f:
-        results = json.load(f)
+        data = json.load(f)
+    
+    metadata = data.get('metadata', {})
+    results = data.get('experiments', data) # Fallback if old format
+    
+    task_type = metadata.get('task_type', 'classification')
     
     keys = list(results.keys())
     model_experiments = [k for k in keys if '_FedAvg' in k]
     strategy_experiments = [k for k in keys if 'DeepMLP_' in k]
     
-    rounds = range(1, len(results[keys[0]]['accuracy']) + 1)
+    primary_metric = 'accuracy' if task_type == 'classification' else 'rmse'
+    primary_metric_label = 'Accuracy (%)' if task_type == 'classification' else 'RMSE'
     
-    # Define Plot filenames with timestamp
-    model_plot_file = f'results/model_accuracy_plot_{timestamp}.png'
-    strategy_plot_file = f'results/strategy_accuracy_plot_{timestamp}.png'
+    secondary_metric = 'auc' if task_type == 'classification' else 'mae'
+    secondary_metric_label = 'AUC-ROC' if task_type == 'classification' else 'MAE'
+    
+    rounds = range(1, len(results[keys[0]]['loss']) + 1)
+    
+    model_plot_file = f'{RESULTS_DIR}/model_comparison_{timestamp}.png'
+    strategy_plot_file = f'{RESULTS_DIR}/strategy_comparison_{timestamp}.png'
     report_file = f'simulation_report_{timestamp}.md'
     
-    # 1. Plot Model Comparison (FedAvg)
+    # 1. Plot Model Comparison
     plt.figure(figsize=(10, 6))
     for key in model_experiments:
         label = key.replace('_FedAvg', '')
-        plt.plot(rounds, results[key]['accuracy'], label=label)
-    plt.xlabel('Round')
-    plt.ylabel('Accuracy (%)')
-    plt.title(f'Model Comparison (Strategy: FedAvg) - {timestamp}')
+        if primary_metric in results[key]:
+            plt.plot(rounds, results[key][primary_metric], label=label)
+    plt.xlabel('Communication Round')
+    plt.ylabel(primary_metric_label)
+    plt.title(f'Model Architecture Comparison (Strategy: FedAvg)')
     plt.legend()
     plt.grid(True)
     plt.savefig(model_plot_file)
-    plt.close() # Close to prevent overlap
+    plt.close()
     
-    # 2. Plot Strategy Comparison (DeepMLP)
-    plt.figure(figsize=(10, 6))
+    # 2. Plot Strategy Comparison
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    
     for key in strategy_experiments:
         label = key.replace('DeepMLP_', '')
-        plt.plot(rounds, results[key]['accuracy'], label=label)
-    plt.xlabel('Round')
-    plt.ylabel('Accuracy (%)')
-    plt.title(f'Strategy Comparison (Model: DeepMLP) - {timestamp}')
-    plt.legend()
-    plt.grid(True)
+        if primary_metric in results[key]:
+            axes[0].plot(rounds, results[key][primary_metric], label=label)
+    axes[0].set_xlabel('Communication Round')
+    axes[0].set_ylabel(primary_metric_label)
+    axes[0].set_title(f'Strategy Convergence ({primary_metric_label})')
+    axes[0].legend()
+    axes[0].grid(True)
+    
+    for key in strategy_experiments:
+        label = key.replace('DeepMLP_', '')
+        if 'loss' in results[key]:
+            axes[1].plot(rounds, results[key]['loss'], label=label)
+    axes[1].set_xlabel('Communication Round')
+    axes[1].set_ylabel('Loss')
+    axes[1].set_title(f'Strategy Loss Convergence')
+    axes[1].legend()
+    axes[1].grid(True)
+    
+    plt.tight_layout()
     plt.savefig(strategy_plot_file)
     plt.close()
     
-    # 3. Create Markdown Report
+    # 3. Generating text summary
     with open(report_file, 'w') as f:
-        f.write(f"# Federated Learning Simulation Report\n")
+        f.write(f"# Federated Learning Simulation Report\n\n")
         f.write(f"**Date**: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"**Source Data**: `{latest_file}`\n\n")
+        f.write(f"**Task Type**: {task_type.capitalize()}\n")
+        f.write(f"**Target**: `{metadata.get('target_col', 'Unknown')}`\n")
+        f.write(f"**Clients**: {metadata.get('num_clients', 'N/A')} (Distribution: {metadata.get('distribution', 'N/A')})\n\n")
         
-        f.write("## 1. Introduction\n")
-        f.write("This report compares different model architectures (**Logistic Regression**, **Simple MLP**, **Deep MLP**) and FL algorithms (**FedAvg**, **FedProx**, **FedAdam**).\n\n")
+        f.write("## 1. Strategy Comparison Summary (The 'Ups and Downs')\n")
+        f.write("Based on the captured metrics, here is an analysis of the federated learning algorithms:\n\n")
+        f.write("- **FedAvg**: The standard baseline. Usually provides steady convergence but can be volatile if client data is highly skewed (non-IID).\n")
+        f.write("- **FedProx**: Introduces a proximal term to constrain local updates. **Ups:** Offers superior stability and prevents the global model from diverging in highly heterogeneous (non-IID) health datasets. **Downs:** Can converge slightly slower than FedAvg initially.\n")
+        f.write("- **FedAdam**: Uses adaptive server-side momentum. **Ups:** Can provide much faster initial convergence and reach a better optimum. **Downs:** Highly sensitive to the learning rate and hyperparameter tuning; can overshoot if not configured perfectly.\n\n")
         
-        f.write("## 2. Models & Strategies\n")
-        f.write("- **Models Evaluated**: Logistic Regression, Simple MLP, Deep MLP.\n")
-        f.write("- **Strategies Evaluated**: FedAvg, FedProx, FedAdam.\n\n")
+        f.write("## 2. Final Results Table\n\n")
         
-        f.write("## 3. Results Comparison\n\n")
-        f.write("### Model Performance (Fixed Strategy: FedAvg)\n")
-        f.write("| Model | Final Accuracy | Final Loss |\n")
-        f.write("|-------|----------------|------------|\n")
-        for key in model_experiments:
-            name = key.replace('_FedAvg', '')
-            acc = results[key]['accuracy'][-1]
-            loss = results[key]['loss'][-1]
-            f.write(f"| {name} | {acc:.2f}% | {loss:.4f} |\n")
-            
-        f.write("\n")
-        f.write("### Algorithm Performance (Fixed Model: DeepMLP)\n")
-        f.write("| Algorithm | Final Accuracy | Final Loss |\n")
-        f.write("|-----------|----------------|------------|\n")
-        for key in strategy_experiments:
-            name = key.replace('DeepMLP_', '')
-            acc = results[key]['accuracy'][-1]
-            loss = results[key]['loss'][-1]
-            f.write(f"| {name} | {acc:.2f}% | {loss:.4f} |\n")
-
-        f.write("\n\n")
-        f.write("## 4. Visualizations\n\n")
-        f.write("### Model Comparison\n")
-        f.write(f"![Model Comparison]({model_plot_file})\n\n")
+        if task_type == 'classification':
+            f.write("| Algorithm | Final Acc | Final F1 | Final AUC | Sensitivity | Specificity | Final Loss |\n")
+            f.write("|-----------|-----------|----------|-----------|-------------|-------------|------------|\n")
+            for key in strategy_experiments:
+                name = key.replace('DeepMLP_', '')
+                acc = results[key].get('accuracy', [0])[-1]
+                f1 = results[key].get('f1', [0])[-1]
+                auc = results[key].get('auc', [0])[-1]
+                sens = results[key].get('recall', [0])[-1]
+                spec = results[key].get('specificity', [0])[-1]
+                loss = results[key].get('loss', [0])[-1]
+                f.write(f"| **{name}** | {acc:.2f}% | {f1:.4f} | {auc:.4f} | {sens:.4f} | {spec:.4f} | {loss:.4f} |\n")
+        else:
+            f.write("| Algorithm | Final RMSE | Final MAE | Final Loss |\n")
+            f.write("|-----------|------------|-----------|------------|\n")
+            for key in strategy_experiments:
+                name = key.replace('DeepMLP_', '')
+                rmse = results[key].get('rmse', [0])[-1]
+                mae = results[key].get('mae', [0])[-1]
+                loss = results[key].get('loss', [0])[-1]
+                f.write(f"| **{name}** | {rmse:.4f} | {mae:.4f} | {loss:.4f} |\n")
         
-        f.write("### Strategy Comparison\n")
-        f.write(f"![Strategy Comparison]({strategy_plot_file})\n\n")
+        f.write("\n## 3. Visualizations\n\n")
+        f.write(f"![Strategy Comparison]({os.path.abspath(strategy_plot_file)})\n\n")
+        f.write(f"![Model Comparison]({os.path.abspath(model_plot_file)})\n\n")
         
     print(f"Report generated: {report_file}")
 

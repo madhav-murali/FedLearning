@@ -12,70 +12,57 @@ The simulation demonstrates how multiple hospitals (clients) can collaboratively
 
 ## Key Features
 
-*   **Multi-Model Support:** Train `LogisticRegression`, `SimpleMLP`, or `DeepMLP` models.
-*   **Configurable Environment:** Easily adjust the number of clients, communication rounds, local epochs, and batch sizes in `fl_simulation.py`.
-*   **Synthetic Healthcare Data:** Uses a synthetic patient health monitoring dataset.
-*   **Performance Metrics:** Tracks Accuracy and Loss across communication rounds.
-*   **Automated Reporting:** Generates simulation reports and visualizations.
+*   **Bring-Your-Own Dataset (BYOD):** Works out-of-the-box with any tabular `.csv` dataset. The preprocessor handles identifying and scaling numerical/categorical columns automatically without writing any code.
+*   **Healthcare Evaluation Metrics:** Computes essential clinical numbers beyond accuracy (Sensitivity, Specificity, AUC-ROC, F1, RMSE).
+*   **Multi-Model Testing:** Automatically tests linear models and fully connected networks side-by-side (`LogisticRegression`, `SimpleMLP`, `DeepMLP`).
+*   **Clinical IID/Non-IID Distribution:** Allows testing across completely identical client hospitals or heavily skewed, distinct distributions with the `--distribution` flag.
+*   **Automated Analytical Reporting:** Auto-plots convergence graphs and generates written summaries comparing algorithmic performance natively.
 
 ## Project Structure
 
-*   `fl_simulation.py`: The main entry point for running the simulation. Manages the server, clients, and training loop.
-*   `fl_model.py`: Definitions of the PyTorch neural network models.
-*   `fl_strategies.py`: Implementation of FL aggregation strategies (FedAvg, etc.).
-*   `fl_data_preprocessing.py`: Loading and splitting of the dataset for clients.
-*   `generate_report.py`: Tool to generate Markdown reports from simulation results.
-*   `requirements.txt`: Python dependencies.
+*   `fl_simulation.py`: The primary command-line runner bridging the simulation servers & hospital clients.
+*   `fl_data_preprocessing.py`: Automated pipeline for scaling, encoding, and partitioning any tabular dataset.
+*   `generate_report.py`: Analytics suite parsing `.json` dumps to plot and summarize data points.
+*   `fl_model.py`: Definitions of PyTorch dense neural network structures.
+*   `fl_strategies.py`: Handles FedAvg, FedProx, and FedAdam server-side mathematical aggregation structures.
 
-## Installation
+## Usage: 3 Easy Steps
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository_url>
-    cd <repository_name>
-    ```
+Follow these steps to plug in your own dataset without editing any code!
 
-2.  **Create a virtual environment (optional but recommended):**
-    ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate
-    ```
+### Step 1: Prepare Your Data
+Make sure your data is in a clean `.csv` file in the main folder. You just need to know the name of the column you are trying to predict (e.g., `"Diagnosis"`, `"Blood Pressure"`, `"Readmitted"`).
 
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+### Step 2: Run the Simulation
+Use the command line to tell the simulation what file to use and what your target is. It takes care of the rest!
 
-## Usage
-
-### Running the Simulation
-
-To start the federated learning simulation, run the `fl_simulation.py` script:
-
+**For Categorical targets (Classification):**
 ```bash
-python fl_simulation.py
+python fl_simulation.py \
+    --data_path "YOUR_DATASET_NAME.csv" \
+    --target_col "YOUR_TARGET_COLUMN" \
+    --task_type classification \
+    --num_clients 5 \
+    --num_rounds 15
 ```
 
-This will:
-1.  Load and preprocess the data.
-2.  Run simulations for defined models and strategies.
-3.  Save the results in the `results/` directory as a JSON file.
-4.  Print progress and final metrics to the console.
+**For Continuous targets (Regression):**
+```bash
+python fl_simulation.py \
+    --data_path "YOUR_DATASET_NAME.csv" \
+    --target_col "YOUR_CONTINUOUS_TARGET" \
+    --task_type regression \
+    --num_clients 5 \
+    --num_rounds 15
+```
 
-### Generating Reports
+> **Advanced Simulation settings:** Add `--distribution non_iid` to simulate highly unbalanced/heterogeneous data among hospitals, or `--local_epochs N` to increase the amount of local training time per client.
 
-After running a simulation, you can generate a readable report:
+### Step 3: View the Results
+When your simulation completes, tell the automated reporting tool to parse the results. It will generate charts and a text review.
 
 ```bash
 python generate_report.py
 ```
 
-Check the generated `simulation_report.md` (or similar) for a summary of the results.
-
-## Results & Analysis
-
-Detailed analysis and comparison of the strategies can be found in `simulation_report_2.md`.
-Current benchmarks indicate:
-*   **FedAvg** generally provides a strong baseline accuracy.
-*   **FedProx** offers stability in heterogeneous settings.
-*   **FedAdam** may require tuning but offers adaptive convergence properties.
+Look into the `results/` folder to see your plots, and read the `simulation_report_*.md` file generated in the main folder to see the "Ups and Downs" summary of the different algorithms tested against your specific dataset!
