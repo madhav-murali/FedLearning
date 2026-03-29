@@ -4,17 +4,32 @@ import os
 import glob
 import datetime
 import numpy as np
+import argparse
 
 RESULTS_DIR = 'results'
+REPORTS_DIR = 'reports'
 
-def generate_report():
-    list_of_files = glob.glob(os.path.join(RESULTS_DIR, 'simulation_results_*.json'))
-    if not list_of_files:
-        print("No results file found. Run fl_simulation.py first.")
-        return
-    
-    latest_file = max(list_of_files, key=os.path.getctime)
-    timestamp = latest_file.split('simulation_results_')[-1].replace('.json', '')
+if not os.path.exists(REPORTS_DIR):
+    os.makedirs(REPORTS_DIR)
+
+def generate_report(result_file=None):
+    if result_file is None:
+        list_of_files = glob.glob(os.path.join(RESULTS_DIR, 'simulation_results_*.json'))
+        if not list_of_files:
+            print("No results file found. Run fl_simulation.py first.")
+            return
+        
+        latest_file = max(list_of_files, key=os.path.getctime)
+    else:
+        latest_file = result_file
+        if not os.path.exists(latest_file):
+            print(f"Error: Specified file not found: {latest_file}")
+            return
+            
+    # Extract timestamp and username from filename if possible
+    # FORMAT: simulation_results_{username}_{timestamp}.json
+    base_name = os.path.basename(latest_file)
+    content_name = base_name.replace('simulation_results_', '').replace('.json', '')
     
     print(f"Generating report for: {latest_file}")
 
@@ -25,6 +40,7 @@ def generate_report():
     results = data.get('experiments', data) # Fallback if old format
     
     task_type = metadata.get('task_type', 'classification')
+    username = metadata.get('username', 'anonymous')
     
     keys = list(results.keys())
     model_experiments = [k for k in keys if '_FedAvg' in k]
@@ -38,9 +54,9 @@ def generate_report():
     
     rounds = range(1, len(results[keys[0]]['loss']) + 1)
     
-    model_plot_file = f'{RESULTS_DIR}/model_comparison_{timestamp}.png'
-    strategy_plot_file = f'{RESULTS_DIR}/strategy_comparison_{timestamp}.png'
-    report_file = f'simulation_report_{timestamp}.md'
+    model_plot_file = f'{REPORTS_DIR}/model_comparison_{content_name}.png'
+    strategy_plot_file = f'{REPORTS_DIR}/strategy_comparison_{content_name}.png'
+    report_file = f'{REPORTS_DIR}/simulation_report_{content_name}.md'
     
     # 1. Plot Model Comparison
     plt.figure(figsize=(10, 6))
@@ -85,7 +101,7 @@ def generate_report():
     
     # 3. Generating text summary
     with open(report_file, 'w') as f:
-        f.write(f"# Federated Learning Simulation Report\n\n")
+        f.write(f"# Federated Learning Simulation Report for **{username.capitalize()}**\n\n")
         f.write(f"**Date**: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"**Task Type**: {task_type.capitalize()}\n")
         f.write(f"**Target**: `{metadata.get('target_col', 'Unknown')}`\n")
@@ -125,7 +141,11 @@ def generate_report():
         f.write(f"![Strategy Comparison]({os.path.abspath(strategy_plot_file)})\n\n")
         f.write(f"![Model Comparison]({os.path.abspath(model_plot_file)})\n\n")
         
-    print(f"Report generated: {report_file}")
+    print(f"Report securely generated at: {report_file}")
 
 if __name__ == "__main__":
-    generate_report()
+    parser = argparse.ArgumentParser(description="Generate FL Report")
+    parser.add_argument('--result_file', type=str, default=None, help="Specific JSON file to parse")
+    args = parser.parse_args()
+    
+    generate_report(args.result_file)

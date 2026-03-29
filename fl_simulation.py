@@ -8,9 +8,9 @@ import time
 import argparse
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, precision_score, recall_score, mean_squared_error, mean_absolute_error, confusion_matrix
-from fl_model import SimpleMLP, LogisticRegression, DeepMLP
-from fl_data_preprocessing import load_and_preprocess_data
-from fl_strategies import aggregate_fedavg, proximal_term, FedAdamServer
+from src.fl_model import SimpleMLP, LogisticRegression, DeepMLP
+from src.fl_data_preprocessing import load_and_preprocess_data
+from src.fl_strategies import aggregate_fedavg, proximal_term, FedAdamServer
 
 RESULTS_DIR = 'results'
 
@@ -177,6 +177,7 @@ def main():
     parser = argparse.ArgumentParser(description="HealthCare Federated Learning Simulation")
     parser.add_argument('--data_path', type=str, required=True, help="Path to the dataset CSV file")
     parser.add_argument('--target_col', type=str, required=True, help="Target column name")
+    parser.add_argument('--username', type=str, default="anonymous", help="Username of the teammate running the simulation")
     parser.add_argument('--task_type', type=str, choices=['classification', 'regression'], default='classification', help="Type of task")
     parser.add_argument('--distribution', type=str, choices=['iid', 'non_iid'], default='iid', help="Data distribution across clients")
     parser.add_argument('--num_clients', type=int, default=5, help="Number of FL clients")
@@ -214,6 +215,7 @@ def main():
     models = ['LogisticRegression', 'SimpleMLP', 'DeepMLP']
     results = {
         'metadata': {
+            'username': args.username,
             'data_path': args.data_path,
             'target_col': args.target_col,
             'task_type': args.task_type,
@@ -238,7 +240,8 @@ def main():
         
     import datetime
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f'simulation_results_{timestamp}.json'
+    # Output uniquely tagged by the runner's username
+    filename = f'simulation_results_{args.username}_{timestamp}.json'
     filepath = os.path.join(RESULTS_DIR, filename)
     
     with open(filepath, 'w') as f:

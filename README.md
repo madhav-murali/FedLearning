@@ -20,49 +20,50 @@ The simulation demonstrates how multiple hospitals (clients) can collaboratively
 
 ## Project Structure
 
+*   `data/`: **Put your datasets here!** Isolated directory for raw input `.csv` files.
+*   `src/`: Core simulation logic.
+    *   `fl_data_preprocessing.py`: Automated pipeline for scaling, encoding, and partitioning any tabular dataset.
+    *   `fl_model.py`: Definitions of PyTorch dense neural network structures.
+    *   `fl_strategies.py`: Handles FedAvg, FedProx, and FedAdam server-side mathematical aggregation structures.
 *   `fl_simulation.py`: The primary command-line runner bridging the simulation servers & hospital clients.
-*   `fl_data_preprocessing.py`: Automated pipeline for scaling, encoding, and partitioning any tabular dataset.
 *   `generate_report.py`: Analytics suite parsing `.json` dumps to plot and summarize data points.
-*   `fl_model.py`: Definitions of PyTorch dense neural network structures.
-*   `fl_strategies.py`: Handles FedAvg, FedProx, and FedAdam server-side mathematical aggregation structures.
 
 ## Usage: 3 Easy Steps
 
 Follow these steps to plug in your own dataset without editing any code!
 
 ### Step 1: Prepare Your Data
-Make sure your data is in a clean `.csv` file in the main folder. You just need to know the name of the column you are trying to predict (e.g., `"Diagnosis"`, `"Blood Pressure"`, `"Readmitted"`).
+Drop your clean `.csv` file directly into the `data/` folder. You just need to know the name of the column you are trying to predict (e.g., `"Diagnosis"`, `"Blood Pressure"`, `"Readmitted"`).
 
-### Step 2: Run the Simulation
-Use the command line to tell the simulation what file to use and what your target is. It takes care of the rest!
+### Step 2: Run the Simulation!
+We've provided an easy one-click script that does the heavy lifting, running the simulation and auto-generating reports tagged with your name!
 
-**For Categorical targets (Classification):**
+Use `./run_experiment.sh` and tell it your name, your file, and what you are trying to predict.
+
+**Example for Disease Prediction (Classification):**
 ```bash
-python fl_simulation.py \
-    --data_path "YOUR_DATASET_NAME.csv" \
-    --target_col "YOUR_TARGET_COLUMN" \
-    --task_type classification \
-    --num_clients 5 \
-    --num_rounds 15
+./run_experiment.sh \
+    --username your_name \
+    --dataset "YOUR_DATASET_NAME.csv" \
+    --target "YOUR_TARGET_COLUMN" \
+    --task classification \
+    --clients 5 \
+    --rounds 15
 ```
 
-**For Continuous targets (Regression):**
+**Example for Continuous Outputs (Regression):**
 ```bash
-python fl_simulation.py \
-    --data_path "YOUR_DATASET_NAME.csv" \
-    --target_col "YOUR_CONTINUOUS_TARGET" \
-    --task_type regression \
-    --num_clients 5 \
-    --num_rounds 15
+./run_experiment.sh \
+    --username your_name \
+    --dataset "YOUR_DATASET_NAME.csv" \
+    --target "YOUR_CONTINUOUS_TARGET" \
+    --task regression \
+    --clients 5 \
+    --rounds 15
 ```
 
-> **Advanced Simulation settings:** Add `--distribution non_iid` to simulate highly unbalanced/heterogeneous data among hospitals, or `--local_epochs N` to increase the amount of local training time per client.
+> **Advanced Simulation settings:** By default it runs identical hospital partitions. To change this, you currently need to modify `run_experiment.sh` itself to pass `--distribution non_iid` directly to the python execution command inside it.
 
-### Step 3: View the Results
-When your simulation completes, tell the automated reporting tool to parse the results. It will generate charts and a text review.
-
-```bash
-python generate_report.py
-```
-
-Look into the `results/` folder to see your plots, and read the `simulation_report_*.md` file generated in the main folder to see the "Ups and Downs" summary of the different algorithms tested against your specific dataset!
+### Step 3: View the Results!
+The script automatically builds your reports without any extra commands!
+Just check the `reports/` folder. All your visual graphs and textual reviews will be stored there as `reports/simulation_report_your_name_timestamp.md`.
