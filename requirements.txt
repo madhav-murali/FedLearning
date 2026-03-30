@@ -3,3 +3,6 @@ pandas
 scikit-learn
 matplotlib
 numpy
+PyPDF2
+python-pptx
+kagglehub

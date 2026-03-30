@@ -67,3 +67,63 @@ Use `./run_experiment.sh` and tell it your name, your file, and what you are try
 ### Step 3: View the Results!
 The script automatically builds your reports without any extra commands!
 Just check the `reports/` folder. All your visual graphs and textual reviews will be stored there as `reports/simulation_report_your_name_timestamp.md`.
+
+## Quick Start Guide
+
+### Installation
+
+1. **Clone the repository:**
+```bash
+git clone <your-repo-url>
+cd Fedlearning
+```
+
+2. **Install dependencies:**
+```bash
+pip install -r requirements.txt
+```
+
+### Running Your First Experiment
+
+**For the Synthetic Patient Monitoring Dataset:**
+```bash
+./run_experiment.sh \
+    --username sushmitha \
+    --dataset "Synthetic_patient-HealthCare-Monitoring_dataset.csv" \
+    --target "Predicted Disease" \
+    --task classification \
+    --clients 5 \
+    --rounds 10
+```
+
+**On Windows (PowerShell):**
+```powershell
+python fl_simulation.py `
+    --data_path "data/Synthetic_patient-HealthCare-Monitoring_dataset.csv" `
+    --target_col "Predicted Disease" `
+    --username "sushmitha" `
+    --task_type classification `
+    --distribution non_iid `
+    --num_clients 5 `
+    --num_rounds 10
+```
+
+### Understanding the Output
+
+After running, you'll get:
+- **Results JSON**: `results/simulation_results_<username>_<timestamp>.json`
+- **Report**: `reports/simulation_report_<username>_<timestamp>.md`
+- **Plots**: Convergence graphs comparing all strategies
+
+### Comparing FL Strategies
+
+The simulation automatically tests all three strategies:
+- **FedAvg**: Baseline federated averaging
+- **FedProx**: Handles heterogeneous (non-IID) data better
+- **FedAdam**: Faster convergence with adaptive optimization
+
+### Current Limitations
+
+⚠️ **Note**: This framework currently supports **CSV (tabular) datasets only**. For image-based datasets (like NIH Chest X-ray), you need to either:
+1. Use a preprocessed CSV with extracted features
+2. Implement custom image data loaders (see `ecg-fl-experiment/` for reference)
