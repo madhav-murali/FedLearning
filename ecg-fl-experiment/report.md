@@ -68,7 +68,6 @@ FedAdam
 • Uses adaptive optimization (momentum + variance)  
 • Stabilizes updates across clients  
 8. Why All Methods Give Similar Results 
-This is a very important insight (write this in your viva/report)       
 In this experiment: 
 • Client data distribution is not highly heterogeneous  
 • Dataset is dominated by normal ECG beats  
